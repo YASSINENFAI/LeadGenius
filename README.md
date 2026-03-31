@@ -1,11 +1,11 @@
 # FindX
 
 <div align="center">
-  <img src="images/dashboard.png" alt="FindX Dashboard" width="100%" />
-
   **Stop cold-calling. Start AI-prospecting.**
 
-  FindX discovers Dutch businesses, analyzes their websites, and writes personalized outreach emails — all on autopilot.
+  FindX discovers businesses, analyzes their websites, and writes personalized outreach emails — all on autopilot using 3 agents .
+
+  <img src="images/dashboard.png" alt="FindX Dashboard" width="100%" />
 
   [ العربية ](README_AR.md) | English
 

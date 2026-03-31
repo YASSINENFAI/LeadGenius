@@ -3,17 +3,18 @@
 # FindX
 
 <div align="center">
+  **توقف عن الاتصال العشوائي. ابدأ بالبحث الذكي بالذكاء الاصطناعي.**
+
+ FindX يكتشف الشركات، يحلل مواقعها الإلكترونية، ويكتب رسائل تواصل شخصية — كل ذلك تلقائياً باستخدام 3 وكلاء.
+
   <img src="images/dashboard.png" alt="لوحة تحكم FindX" width="100%" />
 
-  **توقف عن الاتصال العشوائي. ابدأ التنقيب بالذكاء الاصطناعي.**
-
-  FindX يكتشف الشركات الهولندية، يحلل مواقعها الإلكترونية، ويكتب رسائل تواصل شخصية — كل ذلك تلقائياً.
 
   العربية | [ English ](README.md)
 
   [![Buy Me A Coffee](https://img.shields.io/badge/Buy%20Me%20A%20Coffee-ادعم%20المشروع-FFDD00?style=flat&logo=buymeacoffee&logoColor=black)](https://buymeacoffee.com/mrarabai)
 
-  ---
+  --- 
 </div>
 
 <p align="center">
