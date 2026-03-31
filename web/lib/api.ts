@@ -15,9 +15,11 @@ import type {
 const BASE = "/api";
 
 async function fetchApi<T>(path: string, init?: RequestInit): Promise<T> {
+  const headers: Record<string, string> = { ...init?.headers } as Record<string, string>;
+  if (init?.body) headers["Content-Type"] = "application/json";
   const res = await fetch(`${BASE}${path}`, {
-    headers: { "Content-Type": "application/json", ...init?.headers },
     ...init,
+    headers,
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({ error: res.statusText }));
