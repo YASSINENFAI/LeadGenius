@@ -22,11 +22,13 @@
 
 Three AI agents work in sequence, fully automated:
 
-1. **Research Agent** — Finds businesses matching your query (e.g., "restaurants in Amsterdam") via KVK & Google Places APIs
-2. **Analysis Agent** — Audits each website with Lighthouse, detects tech stack, scores 0–100, identifies opportunities
-3. **Outreach Agent** — Writes personalized cold emails referencing specific findings (e.g., *"Uw website laadt in 8.2 seconden"*)
+1. **Research Agent** — Finds businesses matching your query across multiple countries (Netherlands, UK, Germany, France, Belgium, USA, UAE, and more) via local business registries and Google Places APIs. Supports searches in English, Dutch, and Arabic.
+2. **Analysis Agent** — Audits each website with Lighthouse, detects tech stack, scores 0–100, identifies opportunities including AI/automation potential and revenue leakage
+3. **Outreach Agent** — Writes personalized cold emails in English, Dutch, or Arabic referencing specific findings (e.g., *"Your website loads in 8.2 seconds"*)
 
 **Discover → Analyze → Outreach → Track**
+
+> **Multilingual support**: Search in English, Dutch, or Arabic. Outreach emails are generated in the selected language — including full Arabic support for businesses in the Middle East and North Africa.
 
 <p align="center">
   <img src="images/pipeline-kanban.png" alt="Pipeline Kanban Board" width="100%" />

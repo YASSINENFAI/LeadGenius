@@ -1227,7 +1227,7 @@ export function registerRoutes(app: FastifyInstance) {
       {
         name: "outreach",
         displayName: "Outreach Agent",
-        description: "Drafts personalized, professional Dutch cold outreach emails based on research and analysis data.",
+        description: "Drafts personalized cold outreach emails in English, Dutch, or Arabic based on research and analysis data.",
         role: "outreach",
         icon: "Mail",
         model: "claude-sonnet-4-20250514",

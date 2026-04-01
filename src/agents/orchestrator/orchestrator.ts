@@ -217,7 +217,7 @@ export class AgentOrchestrator {
         try {
           const latestAnalysis = lead.analyses[0];
           const outreachContext = JSON.stringify({
-            language: input.language ?? "nl",
+            language: input.language ?? "en",
             lead: {
               id: lead.id,
               businessName: lead.businessName,

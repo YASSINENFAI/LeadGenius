@@ -295,10 +295,144 @@ Please let me know if you would like to proceed with this proposal.
 Kind regards,
 {{senderName}} | FindX`,
   },
+
+  // --- Arabic templates (professional register) ---
+  {
+    id: "ar_cold_no_website",
+    name: "Cold Outreach — لا يوجد موقع (AR)",
+    category: "cold_no_website",
+    language: "ar",
+    subject: "{{companyName}} غير موجود على الإنترنت",
+    body: `السيد {{contactName}} المحترم،
+
+لقد قمت بمراجعة التواجد الرقمي للشركات في مجال {{industry}} في {{city}}. ولاحظت أن {{companyName}} لا يمتلك موقعًا إلكترونيًا.
+
+في مجال {{industry}}، يبحث 7 من كل 10 عملاء عبر الإنترنت عن مزوّد خدمة. بدون موقع، يتحول هؤلاء العملاء إلى المنافسين. الشركات في {{city}} التي تمتلك مواقع تحصل على هذه الاستفسارات تلقائيًا.
+
+يمكنني إنشاء موقع لـ {{companyName}}:
+- يظهر في نتائج البحث المحلية في {{city}}
+- يعكس هوية شركتكم واحترافيتكم
+- يكون جاهزًا خلال أسبوعين
+
+مكالمة هاتفية مدتها 15 دقيقة كافية لشرح النهج.
+
+[احجز مكالمة]({{meetingLink}})
+
+مع أطيب التحيات،
+{{senderName}} | FindX`,
+  },
+  {
+    id: "ar_cold_has_website",
+    name: "Cold Outreach — فرص تحسين (AR)",
+    category: "cold_has_website",
+    language: "ar",
+    subject: "{{specificInsight}} — ملاحظة حول {{companyName}}",
+    body: `السيد {{contactName}} المحترم،
+
+قمت بتحليل موقع {{companyName}} الإلكتروني. هناك ملاحظة بارزة: {{specificInsight}}.
+
+الشركات في مجال {{industry}} التي تعالج هذه القضايا تشهد عادةً {{estimatedImpact}}. الخطوة الأكثر تأثيرًا لـ {{companyName}}: {{improvementArea}}.
+
+لديّ التحليل الكامل مع توصيات عملية جاهزة. هل نحدد مكالمة مدتها 15 دقيقة لأعرض عليكم النتائج؟
+
+[احجز مكالمة]({{meetingLink}})
+
+مع أطيب التحيات،
+{{senderName}} | FindX`,
+  },
+  {
+    id: "ar_followup_1",
+    name: "Follow-Up 1 — 3 أيام (AR)",
+    category: "followup_1",
+    language: "ar",
+    subject: "رد: {{originalSubject}}",
+    body: `السيد {{contactName}} المحترم،
+
+متابعة سريعة بخصوص تحليلي لـ {{companyName}}. أفهم أنكم مشغولون — سأكون موجزًا.
+
+النتائج لا تزال ذات صلة. يسعدني تحديد موعد يناسبكم بشكل أفضل.
+
+[احجز مكالمة]({{meetingLink}})
+
+مع أطيب التحيات،
+{{senderName}} | FindX`,
+  },
+  {
+    id: "ar_followup_2",
+    name: "Follow-Up 2 — 7 أيام (AR)",
+    category: "followup_2",
+    language: "ar",
+    subject: "تحليل {{companyName}} — ملاحظة أخيرة",
+    body: `السيد {{contactName}} المحترم،
+
+ملاحظة أخيرة. عند مقارنة {{companyName}} ببقية شركات {{industry}} في {{city}}، هناك فرصة واضحة ضائعة: {{specificInsight}}.
+
+الشركات التي تتحرك في هذا الاتجاه تشهد عادةً {{estimatedImpact}}. سأحتفظ بالتحليل الكامل لكم.
+
+إذا رغبتم في المناقشة لاحقًا: [مكالمة 15 دقيقة]({{meetingLink}}). وإلا، لن أتواصل معكم مجددًا.
+
+مع أطيب التحيات،
+{{senderName}} | FindX`,
+  },
+  {
+    id: "ar_breakup",
+    name: "Break-Up — 14 يوم (AR)",
+    category: "breakup",
+    language: "ar",
+    subject: "ختام — تحليل {{companyName}}",
+    body: `السيد {{contactName}} المحترم،
+
+هذه رسالتي الأخيرة. أفهم أن التوقيت قد لا يكون مناسبًا الآن.
+
+تحليل {{companyName}} لا يزال متاحًا. إذا أردتم تحسين التواجد الرقمي مستقبلًا، يمكنكم [مراجعة النتائج هنا]({{meetingLink}}).
+
+أتمنى لـ {{companyName}} كل التوفيق.
+
+مع أطيب التحيات،
+{{senderName}} | FindX`,
+  },
+  {
+    id: "ar_meeting_confirm",
+    name: "تأكيد الموعد (AR)",
+    category: "meeting_confirm",
+    language: "ar",
+    subject: "تأكيد: موعد بخصوص {{companyName}}",
+    body: `السيد {{contactName}} المحترم،
+
+شكرًا على وقتكم. أؤكد هنا موعدنا لمناقشة تحليل موقع {{companyName}} الإلكتروني.
+
+سأعرض عليكم النتائج وأقدم توصيات عملية للتحسين. لن تستغرق المكالمة أكثر من 15 دقيقة.
+
+[تأكيد الموعد]({{meetingLink}})
+
+مع أطيب التحيات،
+{{senderName}} | FindX`,
+  },
+  {
+    id: "ar_proposal_followup",
+    name: "متابعة العرض (AR)",
+    category: "proposal_followup",
+    language: "ar",
+    subject: "عرض لـ {{companyName}} — ملخص",
+    body: `السيد {{contactName}} المحترم،
+
+بناءً على محادثتنا، إليكم ملخص نقاط التحسين لـ {{companyName}}:
+
+{{improvementArea}}
+
+الأثر المتوقع: {{estimatedImpact}}.
+
+يرجى إعلامي إذا كنتم ترغبون في المضي قدمًا في هذا العرض.
+
+[عرض العرض]({{meetingLink}})
+
+مع أطيب التحيات،
+{{senderName}} | FindX`,
+  },
 ];
 
 export function getTemplates(
-  language: EmailLanguage = "nl",
+  language: EmailLanguage = "en",
   category?: EmailTemplate["category"],
 ): EmailTemplate[] {
   let filtered = TEMPLATES.filter((t) => t.language === language);
@@ -334,7 +468,7 @@ export function renderTemplate(
 
 export function pickColdTemplate(
   hasWebsite: boolean,
-  language: EmailLanguage = "nl",
+  language: EmailLanguage = "en",
 ): EmailTemplate {
   const category = hasWebsite ? "cold_has_website" : "cold_no_website";
   const template = TEMPLATES.find(
