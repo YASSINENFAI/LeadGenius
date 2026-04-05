@@ -446,6 +446,14 @@ export function getTemplate(id: string): EmailTemplate | undefined {
   return TEMPLATES.find((t) => t.id === id);
 }
 
+/** Strip em dashes (—) and double hyphens (--) from text, replacing with appropriate punctuation. */
+function stripEmDashes(text: string): string {
+  return text
+    .replace(/\s*—\s*/g, ": ")   // em dash → colon
+    .replace(/\s*–\s*/g, ", ")    // en dash → comma
+    .replace(/\s*--\s*/g, ": ");  // double hyphen → colon
+}
+
 export function renderTemplate(
   template: EmailTemplate,
   vars: TemplateVariables,
@@ -459,8 +467,10 @@ export function renderTemplate(
 
   for (const [key, value] of Object.entries(allVars)) {
     const placeholder = `{{${key}}}`;
-    subject = subject.replaceAll(placeholder, value);
-    body = body.replaceAll(placeholder, value);
+    // Strip em dashes from variable values before substitution
+    const cleanValue = key === "overallScore" ? value : stripEmDashes(value);
+    subject = subject.replaceAll(placeholder, cleanValue);
+    body = body.replaceAll(placeholder, cleanValue);
   }
 
   return { subject, body };

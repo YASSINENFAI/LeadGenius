@@ -137,6 +137,15 @@ export async function generatePersonalizedEmail(
     const jsonMatch = raw.match(/\{[\s\S]*\}/);
     if (!jsonMatch) throw new Error("No JSON found");
     details = JSON.parse(jsonMatch[0]);
+    // Strip em dashes from AI output (model sometimes ignores instructions)
+    for (const key of Object.keys(details) as Array<keyof typeof details>) {
+      if (typeof details[key] === "string") {
+        details[key] = details[key]
+          .replace(/\s*—\s*/g, ": ")
+          .replace(/\s*–\s*/g, ", ")
+          .replace(/\s*--\s*/g, ": ");
+      }
+    }
   } catch {
     throw new Error("Failed to parse AI response as JSON");
   }

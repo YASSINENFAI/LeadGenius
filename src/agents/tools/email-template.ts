@@ -37,14 +37,20 @@ export const renderTemplateTool: Tool = {
   async execute(input) {
     const language = (input.language as "en" | "nl" | "ar") || "en";
     const template = pickColdTemplate(input.has_website as boolean, language);
+    // Strip em dashes from agent-generated content
+    const strip = (s: string) => s
+      .replace(/\s*—\s*/g, ": ")
+      .replace(/\s*–\s*/g, ", ")
+      .replace(/\s*--\s*/g, ": ");
+
     const vars: TemplateVariables = {
-      companyName: input.company_name as string,
-      contactName: input.contact_name as string,
+      companyName: strip(input.company_name as string),
+      contactName: strip(input.contact_name as string),
       industry: (input.industry as string) || "lokale markt",
       city: input.city as string,
-      specificInsight: (input.specific_insight as string) || "",
-      improvementArea: (input.improvement_area as string) || "",
-      estimatedImpact: (input.estimated_impact as string) || "",
+      specificInsight: strip((input.specific_insight as string) || ""),
+      improvementArea: strip((input.improvement_area as string) || ""),
+      estimatedImpact: strip((input.estimated_impact as string) || ""),
       senderName: "FindX",
       meetingLink: "https://findx.nl/plan-gesprek",
     };
