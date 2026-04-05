@@ -11,7 +11,7 @@ import type { Tool } from "../core/types.js";
 export const renderTemplateTool: Tool = {
   name: "render_template",
   description:
-    "Render an email template with personalized variables. Provide the template variables and get back a formatted subject and body. Use for Dutch or English emails.",
+    "Render an email template with personalized variables. Provide the template variables and get back a formatted subject and body. Supports English, Dutch, and Arabic.",
   input_schema: {
     type: "object",
     properties: {

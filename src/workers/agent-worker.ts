@@ -8,15 +8,16 @@ export function startAgentWorker() {
   const worker = createWorker(
     QUEUE_NAMES.AGENT_PIPELINE,
     async (job) => {
-      const { query, pipelineRunId, maxResults } = job.data as {
+      const { query, pipelineRunId, maxResults, language } = job.data as {
         query: string;
         pipelineRunId: string;
         maxResults?: number;
+        language?: "en" | "nl" | "ar";
       };
 
-      console.log(`[AgentWorker] Starting pipeline for: "${query}" (maxResults: ${maxResults ?? "unlimited"})`);
+      console.log(`[AgentWorker] Starting pipeline for: "${query}" (maxResults: ${maxResults ?? "unlimited"}, language: ${language ?? "en"})`);
       const orchestrator = new AgentOrchestrator();
-      return orchestrator.runPipeline({ query, pipelineRunId, maxResults });
+      return orchestrator.runPipeline({ query, pipelineRunId, maxResults, language });
     },
   );
 

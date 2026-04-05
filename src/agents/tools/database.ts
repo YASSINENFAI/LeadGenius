@@ -263,7 +263,7 @@ export const saveOutreachTool: Tool = {
       body: { type: "string", description: "Email body text" },
       htmlBody: { type: "string", description: "Email body HTML (optional)" },
       tone: { type: "string", enum: ["professional", "friendly", "urgent"] },
-      language: { type: "string", enum: ["nl", "en"] },
+      language: { type: "string", enum: ["nl", "en", "ar"] },
       personalizedDetails: {
         type: "string",
         description: "JSON object with specificInsight, improvementArea, estimatedImpact",
