@@ -109,6 +109,7 @@ Required for full operation:
 - `EMAIL_FROM` — Sender email address
 - `PORT` — API server port (default: 3001)
 - `LIGHTPANDA_URL` — Lightpanda CDP endpoint (default: `http://localhost:9222`, optional — tools fall back to Chromium)
+- `SEARXNG_URL` — SearXNG meta search endpoint (default: `http://localhost:8080`, optional — included in docker-compose)
 
 ## Code Conventions
 

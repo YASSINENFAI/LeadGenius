@@ -44,7 +44,7 @@ Manage every lead through a drag-and-drop Kanban board — from discovery to won
 |------------|---------|-----|
 | **Node.js** | 20+ | Runtime for the API server and build tools |
 | **npm** | 10+ | Package manager |
-| **Docker** | Latest | Runs PostgreSQL, Redis, and Lightpanda browser |
+| **Docker** | Latest | Runs PostgreSQL, Redis, Lightpanda browser, and SearXNG |
 | **Git** | Latest | Version control |
 | **AI API key** | — | GLM or OpenAI-compatible API for email generation |
 
@@ -66,13 +66,14 @@ This installs dependencies for both the backend API and the Next.js dashboard.
 docker compose up -d
 ```
 
-This starts three Docker containers:
+This starts four Docker containers:
 
 | Service | Port | Purpose |
 |---------|------|---------|
 | PostgreSQL | 5432 | Database |
 | Redis | 6379 | Background job queues |
 | Lightpanda | 9222 | Lightweight browser for web scraping |
+| SearXNG | 8080 | Meta search engine for web search (used by agents) |
 
 Verify all are running:
 
@@ -80,7 +81,7 @@ Verify all are running:
 docker compose ps
 ```
 
-You should see all three services with status `Up`.
+You should see all four services with status `Up`.
 
 ### Step 3: Configure Environment
 
@@ -107,6 +108,9 @@ GLM_MODEL=glm-5.1
 # Email sending — without this, emails are saved as drafts but not sent
 RESEND_API_KEY=re_xxxxxxxxxxxxx
 EMAIL_FROM=hello@yourdomain.com
+
+# Web search — without SearXNG, agent web_search tool won't work
+SEARXNG_URL=http://localhost:8080
 
 # Dutch business sources — without these, discovery uses web search instead
 KVK_API_KEY=your-kvk-key
@@ -239,7 +243,7 @@ FindX/
 │   ├── schema.prisma             # Database schema
 │   ├── seed.ts                   # Seed data
 │   └── migrations/               # Database migrations
-├── docker-compose.yml            # PostgreSQL + Redis + Lightpanda
+├── docker-compose.yml            # PostgreSQL + Redis + Lightpanda + SearXNG
 ├── .env.example                  # Environment variables template
 ├── CLAUDE.md                     # AI coding assistant instructions
 └── package.json                  # Workspace root
@@ -255,6 +259,7 @@ FindX/
 | AI | GLM (OpenAI-compatible API) |
 | Email | Resend |
 | Browser | Lightpanda (CDP, low RAM) + Playwright Chromium fallback |
+| Search | SearXNG (self-hosted meta search, 70+ engines) |
 | Frontend | Next.js 15, React 19, Tailwind 4 |
 | Scraping | Cheerio + Playwright |
 | Business Data | KVK Open API, Google Places API |

@@ -22,5 +22,15 @@ services:
     command: ["/usr/bin/lightpanda", "serve", "--host", "0.0.0.0", "--port", "9222"]
     restart: unless-stopped
 
+  searxng:
+    image: searxng/searxng:latest
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./searxng/settings.yml:/etc/searxng/settings.yml:ro
+    environment:
+      SEARXNG_BASE_URL: "http://localhost:8080/"
+    restart: unless-stopped
+
 volumes:
   pgdata:
