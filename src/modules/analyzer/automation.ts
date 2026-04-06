@@ -5,38 +5,8 @@
  * specific improvements: missing tools, UX issues, automation potential.
  */
 
+import { simpleChat } from "../../agents/core/client.js";
 import type { Finding, DetectedTechnology, AutomationOpportunity } from "./types.js";
-
-const API_KEY = process.env.GLM_API_KEY;
-const BASE_URL = process.env.GLM_BASE_URL || "https://api.z.ai/api/anthropic";
-const MODEL = process.env.GLM_MODEL || "claude-sonnet-4-20250514";
-
-async function chat(systemPrompt: string, userPrompt: string, maxTokens = 2048): Promise<string> {
-  const response = await fetch(`${BASE_URL}/v1/messages`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "x-api-key": API_KEY || "",
-      "anthropic-version": "2023-06-01",
-    },
-    body: JSON.stringify({
-      model: MODEL,
-      max_tokens: maxTokens,
-      system: systemPrompt,
-      messages: [{ role: "user", content: userPrompt }],
-    }),
-  });
-
-  if (!response.ok) {
-    const text = await response.text();
-    throw new Error(`AI API error (${response.status}): ${text}`);
-  }
-
-  const data = await response.json() as {
-    content: Array<{ type: string; text: string }>;
-  };
-  return data.content?.[0]?.text || "";
-}
 
 const SYSTEM_PROMPT = `You are a web consultant analyzing website audit results for Dutch businesses.
 Your task is to identify automation opportunities and specific improvements.
@@ -71,7 +41,7 @@ export async function detectOpportunities(
   const prompt = buildPrompt(findings, technologies, url);
 
   try {
-    const text = await chat(SYSTEM_PROMPT, prompt);
+    const text = await simpleChat(prompt, { system: SYSTEM_PROMPT, maxTokens: 2048 });
     if (!text) {
       return [];
     }

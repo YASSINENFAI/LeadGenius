@@ -31,6 +31,7 @@ export async function loadAgentConfig(agentName: string): Promise<AgentConfig & 
     tools,
     maxIterations: agent.maxIterations,
     maxTokens: agent.maxTokens,
+    model: agent.model,
   };
 }
 
@@ -58,6 +59,7 @@ export async function loadAllActiveAgents(): Promise<Array<AgentConfig & { id: s
       tools,
       maxIterations: agent.maxIterations,
       maxTokens: agent.maxTokens,
+      model: agent.model,
     };
   });
 }

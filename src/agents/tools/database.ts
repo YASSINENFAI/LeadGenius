@@ -283,11 +283,17 @@ export const saveOutreachTool: Tool = {
       }
     }
 
+    // Strip em dashes from agent-generated content
+    const strip = (s: string) => s
+      .replace(/\s*—\s*/g, ": ")
+      .replace(/\s*–\s*/g, ", ")
+      .replace(/\s*--\s*/g, ": ");
+
     const outreach = await prisma.outreach.create({
       data: {
         leadId,
         status: "draft",
-        subject: input.subject as string,
+        subject: strip(input.subject as string),
         body: input.body as string,
         personalizedDetails: {
           ...personalizedDetails,

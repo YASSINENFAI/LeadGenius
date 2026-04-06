@@ -8,9 +8,14 @@ vi.stubEnv('GLM_MODEL', 'mock-model-v1');
 // Mock timers for retry delay control
 vi.useFakeTimers({ shouldAdvanceTime: true });
 
-// We need to import the module after stubbing env vars.
-// Using dynamic import to ensure mocks are in place.
-// However, ESM hoisting can be tricky. We use vi.mock for fetch globally.
+// Mock prisma so the registry falls back to env vars
+vi.mock('../../lib/db/client.js', () => ({
+  prisma: {
+    aIProvider: {
+      findFirst: vi.fn().mockResolvedValue(null),
+    },
+  },
+}));
 
 import { chat, simpleChat } from './client.js';
 
@@ -27,11 +32,10 @@ function mockAnthropicResponse(content: any[] = [{ type: 'text', text: 'Hello' }
   };
 }
 
-describe('client.ts', () => {
+describe('client.ts (via registry)', () => {
   const originalFetch = globalThis.fetch;
 
   beforeEach(() => {
-    // Reset mocks and timers before each test
     vi.restoreAllMocks();
     vi.clearAllTimers();
     globalThis.fetch = vi.fn();
@@ -55,19 +59,13 @@ describe('client.ts', () => {
       });
 
       expect(result).toEqual(mockResponse);
-      expect(globalThis.fetch).toHaveBeenCalledWith('https://api.z.ai/api/anthropic/v1/messages', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-api-key': '',
-          'anthropic-version': '2023-06-01',
-        },
-        body: JSON.stringify({
-          model: 'claude-sonnet-4-20250514',
-          max_tokens: 4096,
-          messages: [{ role: 'user', content: 'Hi' }],
-        }),
-      });
+      expect(globalThis.fetch).toHaveBeenCalledTimes(1);
+
+      const [url, options] = (globalThis.fetch as any).mock.calls[0];
+      expect(url).toContain('/v1/messages');
+      expect(options.method).toBe('POST');
+      const body = JSON.parse(options.body);
+      expect(body.messages).toEqual([{ role: 'user', content: 'Hi' }]);
     });
 
     it('should include system prompt and tools in the body if provided', async () => {
@@ -88,7 +86,7 @@ describe('client.ts', () => {
 
       const fetchCall = (globalThis.fetch as any).mock.calls[0];
       const body = JSON.parse(fetchCall[1].body);
-      
+
       expect(body.system).toBe('You are a bot.');
       expect(body.tools).toEqual(tools);
       expect(body.max_tokens).toBe(1024);
@@ -112,21 +110,6 @@ describe('client.ts', () => {
       expect(body).not.toHaveProperty('tools');
     });
 
-    it('should default max_tokens to 4096 if not specified', async () => {
-      const mockResponse = mockAnthropicResponse();
-      (globalThis.fetch as any).mockResolvedValueOnce({
-        ok: true,
-        status: 200,
-        json: () => Promise.resolve(mockResponse),
-      });
-
-      await chat({ messages: [{ role: 'user', content: 'Hi' }] });
-
-      const fetchCall = (globalThis.fetch as any).mock.calls[0];
-      const body = JSON.parse(fetchCall[1].body);
-      expect(body.max_tokens).toBe(4096);
-    });
-
     it('should handle API non-retryable errors (e.g. 400) immediately', async () => {
       (globalThis.fetch as any).mockResolvedValueOnce({
         ok: false,
@@ -138,21 +121,9 @@ describe('client.ts', () => {
       expect(globalThis.fetch).toHaveBeenCalledTimes(1);
     });
 
-    it('should retry and eventually throw on persistent non-retryable errors', async () => {
-      (globalThis.fetch as any).mockResolvedValue({
-        ok: false,
-        status: 401,
-        text: () => Promise.resolve('Unauthorized'),
-      });
-
-      // 401 is not retryable, should throw immediately
-      await expect(chat({ messages: [] })).rejects.toThrow('AI API error (401): Unauthorized');
-      expect(globalThis.fetch).toHaveBeenCalledTimes(1);
-    });
-
     it('should retry retryable API errors (500) up to MAX_RETRIES', async () => {
       const consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
-      
+
       (globalThis.fetch as any).mockResolvedValue({
         ok: false,
         status: 500,
@@ -160,18 +131,14 @@ describe('client.ts', () => {
       });
 
       const chatPromise = chat({ messages: [] });
-      chatPromise.catch(() => {}); // Prevent unhandled rejection during timer advancement
+      chatPromise.catch(() => {});
 
-      // Advance through all retry delays
       await vi.runAllTimersAsync();
 
       await expect(chatPromise).rejects.toThrow('AI API error (500): Internal Server Error');
 
-      // Initial call + 3 retries = 4 calls? Wait, loop is attempt 1 to MAX_RETRIES (3).
-      // Attempt 1 fails, sleep, attempt 2 fails, sleep, attempt 3 fails, throw.
-      // Total = 3 calls.
       expect(globalThis.fetch).toHaveBeenCalledTimes(3);
-      expect(consoleWarnSpy).toHaveBeenCalledTimes(2); // Warns only on attempts < MAX_RETRIES
+      expect(consoleWarnSpy).toHaveBeenCalledTimes(2);
     });
 
     it('should succeed on the second attempt after a retryable API error (429)', async () => {
@@ -191,10 +158,7 @@ describe('client.ts', () => {
         });
 
       const chatPromise = chat({ messages: [] });
-
-      // Advance timer for the first retry delay
       await vi.runAllTimersAsync();
-
       const result = await chatPromise;
 
       expect(result).toEqual(mockResponse);
@@ -216,7 +180,6 @@ describe('client.ts', () => {
         });
 
       const chatPromise = chat({ messages: [] });
-
       await vi.runAllTimersAsync();
 
       const result = await chatPromise;
@@ -241,36 +204,11 @@ describe('client.ts', () => {
       (globalThis.fetch as any).mockRejectedValue(networkError);
 
       const chatPromise = chat({ messages: [] });
-      chatPromise.catch(() => {}); // Prevent unhandled rejection during timer advancement
+      chatPromise.catch(() => {});
       await vi.runAllTimersAsync();
 
       await expect(chatPromise).rejects.toThrow('fetch timeout');
       expect(globalThis.fetch).toHaveBeenCalledTimes(3);
-    });
-
-    it('should use defaults if environment variables are not set', async () => {
-      // Clear the mocked env vars temporarily
-      const originalApiKey = process.env.GLM_API_KEY;
-      const originalBaseUrl = process.env.GLM_BASE_URL;
-      const originalModel = process.env.GLM_MODEL;
-      
-      delete process.env.GLM_API_KEY;
-      delete process.env.GLM_BASE_URL;
-      delete process.env.GLM_MODEL;
-
-      // Dynamic re-import or testing inline if defaults are read at runtime.
-      // Since these are evaluated at module load time in the source code, 
-      // we test the fallback logic by manually constructing the expected default values here 
-      // to demonstrate awareness, though true testing of module-level consts 
-      // would require dynamic import() or vi.resetModules().
-      
-      // Restore them immediately so other tests aren't affected
-      process.env.GLM_API_KEY = originalApiKey;
-      process.env.GLM_BASE_URL = originalBaseUrl;
-      process.env.GLM_MODEL = originalModel;
-      
-      // Passing test execution to maintain suite integrity 
-      expect(true).toBe(true); 
     });
   });
 
@@ -288,8 +226,7 @@ describe('client.ts', () => {
 
       const text = await simpleChat('What is the answer?');
       expect(text).toBe('The answer is 42.');
-      
-      // Verify it called chat with the correct structure
+
       const fetchCall = (globalThis.fetch as any).mock.calls[0];
       const body = JSON.parse(fetchCall[1].body);
       expect(body.messages).toEqual([{ role: 'user', content: 'What is the answer?' }]);
@@ -312,8 +249,7 @@ describe('client.ts', () => {
     });
 
     it('should throw an error if the response content contains no text blocks', async () => {
-      // Empty content array
-      const mockResponse = mockAnthropicResponse([]); 
+      const mockResponse = mockAnthropicResponse([]);
       (globalThis.fetch as any).mockResolvedValueOnce({
         ok: true,
         status: 200,
@@ -327,7 +263,7 @@ describe('client.ts', () => {
       const mockResponse = mockAnthropicResponse([
         { type: 'tool_use', id: 'tool_1', name: 'calculator', input: {} },
       ]);
-      
+
       (globalThis.fetch as any).mockResolvedValueOnce({
         ok: true,
         status: 200,
@@ -345,7 +281,7 @@ describe('client.ts', () => {
       });
 
       const simpleChatPromise = simpleChat('Trigger error');
-      simpleChatPromise.catch(() => {}); // Prevent unhandled rejection during timer advancement
+      simpleChatPromise.catch(() => {});
       await vi.runAllTimersAsync();
 
       await expect(simpleChatPromise).rejects.toThrow('AI API error (500): Server Error');

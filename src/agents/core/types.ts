@@ -23,6 +23,7 @@ export interface AgentConfig {
   tools: Tool[];
   maxIterations: number;
   maxTokens: number;
+  model?: string;
 }
 
 /** Result of a single agent run */

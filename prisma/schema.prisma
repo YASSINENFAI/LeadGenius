@@ -30,6 +30,17 @@ enum OutreachStatus {
   failed
 }
 
+enum AiProviderType {
+  glm
+  anthropic
+  openai
+  ollama
+  minimax
+  kimi
+  deepseek
+  groq
+}
+
 model Lead {
   id            String        @id @default(cuid())
   businessName  String
@@ -189,6 +200,24 @@ model AgentLog {
   @@index([createdAt])
 }
 
+model AiProvider {
+  id           String        @id @default(cuid())
+  name         String        @unique
+  providerType AiProviderType
+  apiKey       String?
+  baseUrl      String?
+  model        String
+  isActive     Boolean       @default(true)
+  isDefault    Boolean       @default(false)
+  temperature  Float?
+  maxTokens    Int           @default(4096)
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  @@index([providerType])
+  @@index([isDefault])
+}
+
 model EmailProviderToken {
   id           String    @id @default(cuid())
   provider     String    @unique
@@ -200,4 +229,23 @@ model EmailProviderToken {
   email        String?
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
+}
+
+model SmtpConfig {
+  id        String  @id @default("default")
+  host      String
+  port      Int     @default(465)
+  secure    Boolean @default(true)
+  user      String
+  password  String
+  fromEmail String
+  fromName  String  @default("FindX")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model EmailSetting {
+  id              String   @id @default("default")
+  defaultProvider String?
+  updatedAt       DateTime @updatedAt
 }

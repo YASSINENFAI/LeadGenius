@@ -47,6 +47,7 @@ export async function runAgentWithLogging(
       messages,
       tools: agentConfig.tools,
       maxTokens: agentConfig.maxTokens,
+      ...(agentConfig.model ? { model: agentConfig.model } : {}),
     });
 
     totalInputTokens += response.usage.input_tokens;
