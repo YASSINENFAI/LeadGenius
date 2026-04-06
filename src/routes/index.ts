@@ -36,6 +36,8 @@ import {
   getGmailProfile,
 } from "../lib/email/gmail-oauth.js";
 import { resetProviderCache } from "../lib/email/client.js";
+import { PROVIDER_DEFAULTS } from "../lib/ai/providers/defaults.js";
+import { testProvider } from "../lib/ai/providers/registry.js";
 
 // In-memory CSRF state for OAuth flow (single-user, short-lived)
 const oauthStates = new Map<string, { expires: number }>();
@@ -1392,13 +1394,38 @@ export function registerRoutes(app: FastifyInstance) {
     const hasGmailCredentials = !!(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET);
     const hasResendKey = !!process.env.RESEND_API_KEY;
     const storedTokens = await getStoredTokens();
+    const smtpConfig = await prisma.smtpConfig.findUnique({ where: { id: "default" } });
+    const setting = await prisma.emailSetting.findUnique({ where: { id: "default" } });
 
     let provider: string;
     let configured: boolean;
     let connected = false;
     let email: string | null = null;
 
-    if (hasGmailCredentials && storedTokens) {
+    // Check user preference first
+    if (setting?.defaultProvider) {
+      if (setting.defaultProvider === "smtp" && smtpConfig) {
+        provider = "smtp";
+        configured = true;
+        connected = true;
+        email = smtpConfig.fromEmail;
+      } else if (setting.defaultProvider === "gmail" && hasGmailCredentials && storedTokens) {
+        provider = "gmail";
+        configured = true;
+        connected = true;
+        email = storedTokens.email;
+      } else if (setting.defaultProvider === "resend" && hasResendKey) {
+        provider = "resend";
+        configured = true;
+        connected = true;
+        email = process.env.EMAIL_FROM || null;
+      } else {
+        // Preference set but provider not configured — fall through to auto-detect
+        provider = "none";
+        configured = false;
+        connected = false;
+      }
+    } else if (hasGmailCredentials && storedTokens) {
       provider = "gmail";
       configured = true;
       connected = true;
@@ -1407,6 +1434,11 @@ export function registerRoutes(app: FastifyInstance) {
       provider = "gmail";
       configured = true;
       connected = false;
+    } else if (smtpConfig) {
+      provider = "smtp";
+      configured = true;
+      connected = true;
+      email = smtpConfig.fromEmail;
     } else if (hasResendKey) {
       provider = "resend";
       configured = true;
@@ -1486,5 +1518,265 @@ export function registerRoutes(app: FastifyInstance) {
     await deleteTokens();
     resetProviderCache();
     return reply.send({ disconnected: true });
+  });
+
+  // ─── SMTP Config ──────────────────────────────────────────────────
+
+  // GET /api/email/smtp/config
+  app.get("/api/email/smtp/config", async (_req, reply) => {
+    const config = await prisma.smtpConfig.findUnique({ where: { id: "default" } });
+    if (!config) {
+      return reply.send({ configured: false });
+    }
+    return reply.send({
+      configured: true,
+      host: config.host,
+      port: config.port,
+      secure: config.secure,
+      user: config.user,
+      fromEmail: config.fromEmail,
+      fromName: config.fromName,
+    });
+  });
+
+  // PUT /api/email/smtp/config
+  app.put("/api/email/smtp/config", async (req, reply) => {
+    const schema = z.object({
+      host: z.string().min(1),
+      port: z.number().int().min(1).max(65535).default(465),
+      secure: z.boolean().default(true),
+      user: z.string().min(1),
+      password: z.string().min(1),
+      fromEmail: z.string().email(),
+      fromName: z.string().min(1).default("FindX"),
+    });
+
+    const parsed = schema.safeParse(req.body);
+    if (!parsed.success) {
+      return reply.status(400).send({ error: "Invalid input", details: parsed.error.flatten() });
+    }
+
+    const data = parsed.data;
+    const config = await prisma.smtpConfig.upsert({
+      where: { id: "default" },
+      update: data,
+      create: { id: "default", ...data },
+    });
+
+    resetProviderCache();
+
+    return reply.send({
+      configured: true,
+      host: config.host,
+      port: config.port,
+      secure: config.secure,
+      user: config.user,
+      fromEmail: config.fromEmail,
+      fromName: config.fromName,
+    });
+  });
+
+  // DELETE /api/email/smtp/config
+  app.delete("/api/email/smtp/config", async (_req, reply) => {
+    await prisma.smtpConfig.deleteMany({ where: { id: "default" } });
+    resetProviderCache();
+    return reply.send({ deleted: true });
+  });
+
+  // POST /api/email/smtp/test
+  app.post("/api/email/smtp/test", async (_req, reply) => {
+    const config = await prisma.smtpConfig.findUnique({ where: { id: "default" } });
+    if (!config) {
+      return reply.status(400).send({ error: "SMTP not configured" });
+    }
+
+    try {
+      const { createSmtpProvider } = await import("../lib/email/providers/smtp.js");
+      const provider = createSmtpProvider({
+        host: config.host,
+        port: config.port,
+        secure: config.secure,
+        user: config.user,
+        password: config.password,
+        fromEmail: config.fromEmail,
+        fromName: config.fromName,
+      });
+
+      const result = await provider.send({
+        to: config.fromEmail,
+        subject: "FindX SMTP Test",
+        html: "<p>This is a test email from FindX. If you received this, SMTP is configured correctly.</p>",
+      });
+
+      return reply.send({ success: true, messageId: result.id });
+    } catch (err) {
+      return reply.send({
+        success: false,
+        error: err instanceof Error ? err.message : "Test failed",
+      });
+    }
+  });
+
+  // ─── Email Settings (default provider) ─────────────────────────────
+
+  // GET /api/email/settings
+  app.get("/api/email/settings", async (_req, reply) => {
+    const setting = await prisma.emailSetting.findUnique({ where: { id: "default" } });
+
+    const hasGmailCredentials = !!(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET);
+    const gmailTokens = await getStoredTokens();
+    const smtpConfig = await prisma.smtpConfig.findUnique({ where: { id: "default" } });
+    const hasResendKey = !!process.env.RESEND_API_KEY;
+
+    return reply.send({
+      defaultProvider: setting?.defaultProvider ?? null,
+      providers: {
+        gmail: {
+          configured: hasGmailCredentials,
+          connected: !!gmailTokens,
+          email: gmailTokens?.email ?? null,
+        },
+        smtp: {
+          configured: !!smtpConfig,
+          email: smtpConfig?.fromEmail ?? null,
+        },
+        resend: {
+          configured: hasResendKey,
+          email: process.env.EMAIL_FROM ?? null,
+        },
+      },
+    });
+  });
+
+  // PUT /api/email/settings
+  app.put("/api/email/settings", async (req, reply) => {
+    const schema = z.object({
+      defaultProvider: z.enum(["resend", "gmail", "smtp"]),
+    });
+
+    const parsed = schema.safeParse(req.body);
+    if (!parsed.success) {
+      return reply.status(400).send({ error: "Invalid provider. Must be resend, gmail, or smtp." });
+    }
+
+    await prisma.emailSetting.upsert({
+      where: { id: "default" },
+      update: { defaultProvider: parsed.data.defaultProvider },
+      create: { id: "default", defaultProvider: parsed.data.defaultProvider },
+    });
+
+    resetProviderCache();
+
+    return reply.send({ defaultProvider: parsed.data.defaultProvider });
+  });
+
+  // ============================================================
+  // AI Provider Settings
+  // ============================================================
+
+  const aiProviderSchema = z.object({
+    name: z.string().min(1).max(100),
+    providerType: z.enum(["glm", "anthropic", "openai", "ollama", "minimax", "kimi", "deepseek", "groq"]),
+    apiKey: z.string().optional(),
+    baseUrl: z.string().optional(),
+    model: z.string().min(1),
+    temperature: z.number().min(0).max(2).optional().nullable(),
+    maxTokens: z.number().int().min(1).max(65536).default(4096),
+    isActive: z.boolean().default(true),
+  });
+
+  // GET /api/ai/providers — list all providers
+  app.get("/api/ai/providers", async (_req, reply) => {
+    const providers = await prisma.aiProvider.findMany({ orderBy: { isDefault: "desc" } });
+    // Mask API keys in response
+    const masked = providers.map((p) => ({
+      ...p,
+      apiKey: p.apiKey ? `${p.apiKey.slice(0, 8)}${"*".repeat(8)}` : null,
+    }));
+    return reply.send({ providers: masked, defaults: PROVIDER_DEFAULTS });
+  });
+
+  // POST /api/ai/providers — create provider
+  app.post("/api/ai/providers", async (req, reply) => {
+    const data = aiProviderSchema.parse(req.body);
+    const defaults = PROVIDER_DEFAULTS[data.providerType];
+    const provider = await prisma.aiProvider.create({
+      data: {
+        name: data.name,
+        providerType: data.providerType,
+        apiKey: data.apiKey ?? null,
+        baseUrl: data.baseUrl || defaults?.defaultBaseUrl || null,
+        model: data.model,
+        temperature: data.temperature ?? null,
+        maxTokens: data.maxTokens,
+        isActive: data.isActive,
+        isDefault: false,
+      },
+    });
+    return reply.send({ provider: { ...provider, apiKey: provider.apiKey ? `${provider.apiKey.slice(0, 8)}${"*".repeat(8)}` : null } });
+  });
+
+  // PATCH /api/ai/providers/:id — update provider
+  app.patch("/api/ai/providers/:id", async (req, reply) => {
+    const { id } = req.params as { id: string };
+    const data = aiProviderSchema.partial().parse(req.body);
+    const provider = await prisma.aiProvider.update({
+      where: { id },
+      data,
+    });
+    return reply.send({ provider: { ...provider, apiKey: provider.apiKey ? `${provider.apiKey.slice(0, 8)}${"*".repeat(8)}` : null } });
+  });
+
+  // DELETE /api/ai/providers/:id — delete provider
+  app.delete("/api/ai/providers/:id", async (req, reply) => {
+    const { id } = req.params as { id: string };
+    const provider = await prisma.aiProvider.delete({ where: { id } });
+    return reply.send({ deleted: true, name: provider.name });
+  });
+
+  // POST /api/ai/providers/:id/test — test provider connection
+  app.post("/api/ai/providers/:id/test", async (req, reply) => {
+    const { id } = req.params as { id: string };
+    const provider = await prisma.aiProvider.findUnique({ where: { id } });
+    if (!provider) {
+      return reply.status(404).send({ error: "Provider not found" });
+    }
+    const defaults = PROVIDER_DEFAULTS[provider.providerType];
+    const config = {
+      name: provider.name,
+      providerType: provider.providerType,
+      apiKey: provider.apiKey,
+      baseUrl: provider.baseUrl || defaults?.defaultBaseUrl || "",
+      model: provider.model,
+      maxTokens: provider.maxTokens,
+      temperature: provider.temperature,
+      isActive: provider.isActive,
+      isDefault: provider.isDefault,
+    };
+    const result = await testProvider(config);
+    return reply.send(result);
+  });
+
+  // POST /api/ai/providers/:id/default — set as default provider
+  app.post("/api/ai/providers/:id/default", async (req, reply) => {
+    const { id } = req.params as { id: string };
+    const provider = await prisma.aiProvider.findUnique({ where: { id } });
+    if (!provider) {
+      return reply.status(404).send({ error: "Provider not found" });
+    }
+    if (!provider.isActive) {
+      return reply.status(400).send({ error: "Cannot set inactive provider as default" });
+    }
+    // Unset current default, set new default in a transaction
+    await prisma.$transaction([
+      prisma.aiProvider.updateMany({ where: { isDefault: true }, data: { isDefault: false } }),
+      prisma.aiProvider.update({ where: { id }, data: { isDefault: true } }),
+    ]);
+    return reply.send({ success: true, providerId: id });
+  });
+
+  // GET /api/ai/providers/defaults — get provider default configs
+  app.get("/api/ai/providers/defaults", async (_req, reply) => {
+    return reply.send({ defaults: PROVIDER_DEFAULTS });
   });
 }

@@ -13,7 +13,7 @@ export interface SendResult {
 }
 
 export interface EmailProvider {
-  name: "resend" | "gmail";
+  name: "resend" | "gmail" | "smtp";
   isConfigured(): boolean;
   send(params: SendParams): Promise<SendResult>;
 }

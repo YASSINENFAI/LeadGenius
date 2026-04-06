@@ -1,16 +1,56 @@
+import { prisma } from "../db/client.js";
 import { createResendProvider } from "./providers/resend.js";
 import { createGmailProvider } from "./providers/gmail.js";
+import { createSmtpProvider } from "./providers/smtp.js";
 import { getStoredTokens } from "./gmail-oauth.js";
 import type { EmailProvider, SendResult } from "./providers/types.js";
 
-const FROM = process.env.EMAIL_FROM || "findx@example.com";
-
 let _cachedProvider: EmailProvider | null = null;
+
+type ProviderName = "resend" | "gmail" | "smtp";
+
+async function tryCreateProvider(name: ProviderName): Promise<EmailProvider | null> {
+  switch (name) {
+    case "gmail": {
+      if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET) return null;
+      const tokens = await getStoredTokens();
+      if (!tokens) return null;
+      return createGmailProvider();
+    }
+    case "smtp": {
+      const config = await prisma.smtpConfig.findUnique({ where: { id: "default" } });
+      if (!config) return null;
+      return createSmtpProvider({
+        host: config.host,
+        port: config.port,
+        secure: config.secure,
+        user: config.user,
+        password: config.password,
+        fromEmail: config.fromEmail,
+        fromName: config.fromName,
+      });
+    }
+    case "resend": {
+      if (!process.env.RESEND_API_KEY) return null;
+      return createResendProvider();
+    }
+  }
+}
 
 async function getActiveProvider(): Promise<EmailProvider> {
   if (_cachedProvider) return _cachedProvider;
 
-  // If Gmail OAuth credentials are configured AND tokens exist, use Gmail
+  // 1. Check user's preferred provider from DB
+  const setting = await prisma.emailSetting.findUnique({ where: { id: "default" } });
+  if (setting?.defaultProvider) {
+    const provider = await tryCreateProvider(setting.defaultProvider as ProviderName);
+    if (provider) {
+      _cachedProvider = provider;
+      return _cachedProvider;
+    }
+  }
+
+  // 2. Auto-detect: Gmail if OAuth tokens exist, then Resend
   if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
     const tokens = await getStoredTokens();
     if (tokens) {
@@ -19,18 +59,16 @@ async function getActiveProvider(): Promise<EmailProvider> {
     }
   }
 
-  // Explicit provider choice via env var
   if (process.env.EMAIL_PROVIDER === "gmail") {
     _cachedProvider = createGmailProvider();
     return _cachedProvider;
   }
 
-  // Default: Resend
   _cachedProvider = createResendProvider();
   return _cachedProvider;
 }
 
-/** Clear the cached provider (call after connect/disconnect Gmail) */
+/** Clear the cached provider (call after config changes) */
 export function resetProviderCache(): void {
   _cachedProvider = null;
 }
@@ -52,7 +90,7 @@ export interface SendEmailResult {
 }
 
 /**
- * Send an email via the active provider (Gmail or Resend).
+ * Send an email via the active provider (Gmail, SMTP, or Resend).
  *
  * If the provider is not configured the call is **not** an error — instead
  * the function logs a warning and returns a mock success response so callers

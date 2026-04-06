@@ -233,3 +233,52 @@ export interface EmailProviderStatus {
   connected: boolean;
   email: string | null;
 }
+
+export interface EmailSettingsResponse {
+  defaultProvider: string | null;
+  providers: {
+    gmail: { configured: boolean; connected: boolean; email: string | null };
+    smtp: { configured: boolean; email: string | null };
+    resend: { configured: boolean; email: string | null };
+  };
+}
+
+export interface SmtpConfigResponse {
+  configured: boolean;
+  host?: string;
+  port?: number;
+  secure?: boolean;
+  user?: string;
+  fromEmail?: string;
+  fromName?: string;
+}
+
+// --- AI Provider ---
+
+export type AiProviderType = "glm" | "anthropic" | "openai" | "ollama" | "minimax" | "kimi" | "deepseek" | "groq";
+
+export interface AiProvider {
+  id: string;
+  name: string;
+  providerType: AiProviderType;
+  apiKey: string | null;
+  baseUrl: string | null;
+  model: string;
+  isActive: boolean;
+  isDefault: boolean;
+  temperature: number | null;
+  maxTokens: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AiProviderDefaults {
+  type: string;
+  label: string;
+  protocol: string;
+  defaultBaseUrl: string;
+  defaultModel: string;
+  models: string[];
+  docsUrl: string;
+  requiresApiKey: boolean;
+}

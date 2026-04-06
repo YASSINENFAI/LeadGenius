@@ -11,6 +11,11 @@ import type {
   Agent,
   AgentLog,
   EmailProviderStatus,
+  EmailSettingsResponse,
+  SmtpConfigResponse,
+  AiProvider,
+  AiProviderDefaults,
+  AiProviderType,
 } from "./types";
 
 const BASE = "/api";
@@ -296,4 +301,100 @@ export function getGmailConnectUrl(): Promise<{ url: string }> {
 
 export function disconnectGmail(): Promise<{ disconnected: boolean }> {
   return fetchApi("/email/gmail/disconnect", { method: "POST" });
+}
+
+// --- Email Settings ---
+
+export function getEmailSettings(): Promise<EmailSettingsResponse> {
+  return fetchApi("/email/settings");
+}
+
+export function setEmailSettings(defaultProvider: "resend" | "gmail" | "smtp"): Promise<{ defaultProvider: string }> {
+  return fetchApi("/email/settings", {
+    method: "PUT",
+    body: JSON.stringify({ defaultProvider }),
+  });
+}
+
+export function getSmtpConfig(): Promise<SmtpConfigResponse> {
+  return fetchApi("/email/smtp/config");
+}
+
+export function saveSmtpConfig(data: {
+  host: string;
+  port: number;
+  secure: boolean;
+  user: string;
+  password: string;
+  fromEmail: string;
+  fromName: string;
+}): Promise<SmtpConfigResponse> {
+  return fetchApi("/email/smtp/config", {
+    method: "PUT",
+    body: JSON.stringify(data),
+  });
+}
+
+export function deleteSmtpConfig(): Promise<{ deleted: boolean }> {
+  return fetchApi("/email/smtp/config", { method: "DELETE" });
+}
+
+export function testSmtpConfig(): Promise<{ success: boolean; error?: string; messageId?: string }> {
+  return fetchApi("/email/smtp/test", { method: "POST" });
+}
+
+// --- AI Providers ---
+
+export function getAiProviders(): Promise<{
+  providers: AiProvider[];
+  defaults: Record<string, AiProviderDefaults>;
+}> {
+  return fetchApi("/ai/providers");
+}
+
+export function createAiProvider(data: {
+  name: string;
+  providerType: AiProviderType;
+  apiKey?: string;
+  baseUrl?: string;
+  model: string;
+  temperature?: number | null;
+  maxTokens?: number;
+  isActive?: boolean;
+}): Promise<{ provider: AiProvider }> {
+  return fetchApi("/ai/providers", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
+export function updateAiProvider(
+  id: string,
+  data: Partial<{
+    name: string;
+    providerType: AiProviderType;
+    apiKey: string;
+    baseUrl: string;
+    model: string;
+    temperature: number | null;
+    maxTokens: number;
+    isActive: boolean;
+  }>,
+): Promise<{ provider: AiProvider }> {
+  return fetchApi(`/ai/providers/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify(data),
+  });
+}
+
+export function deleteAiProvider(id: string): Promise<{ deleted: boolean; name: string }> {
+  return fetchApi(`/ai/providers/${id}`, { method: "DELETE" });
+}
+
+export function testAiProvider(id: string): Promise<{ ok: boolean; error?: string; model?: string }> {
+  return fetchApi(`/ai/providers/${id}/test`, { method: "POST" });
+}
+
+export function setDefaultAiProvider(id: string): Promise<{ success: boolean; providerId: string }> {
+  return fetchApi(`/ai/providers/${id}/default`, { method: "POST" });
 }
