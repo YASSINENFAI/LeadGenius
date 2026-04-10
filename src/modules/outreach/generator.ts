@@ -163,8 +163,8 @@ export async function generatePersonalizedEmail(
     improvementArea: details.improvementArea,
     estimatedImpact: details.estimatedImpact,
     overallScore: lead.overallScore != null ? String(lead.overallScore) : undefined,
-    senderName: "FindX",
-    meetingLink: "https://findx.nl/plan-gesprek",
+    senderName: "Yassine",
+    meetingLink: "https://calendly.com/yassine/meeting",
   };
 
   const { subject, body } = renderTemplate(template, vars);

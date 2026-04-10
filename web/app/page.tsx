@@ -27,13 +27,13 @@ export default function Home() {
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
 
   return (
-    <div className="min-h-screen bg-slate-950 p-6 space-y-6">
+    <div className="min-h-screen bg-slate-950 p-8 space-y-8">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold text-slate-100">
+        <h1 className="text-3xl font-bold text-slate-100">
           {getGreeting()}
         </h1>
-        <p className="text-sm text-slate-400 mt-0.5">
+        <p className="text-base text-slate-400 mt-1">
           {formatDate()} &middot; Pipeline overview
         </p>
       </div>
@@ -42,7 +42,7 @@ export default function Home() {
       <DashboardCards />
 
       {/* Main content: Kanban (2/3) + Right panel (1/3) */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Kanban board - 2/3 width */}
         <div className="lg:col-span-2">
           <LiveKanbanBoard onSelectLead={setSelectedLead} />

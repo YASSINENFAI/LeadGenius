@@ -3,6 +3,7 @@
 
 import { prisma } from "../../lib/db/client.js";
 import { sendEmail, isEmailConfigured } from "../../lib/email/client.js";
+import { notifyTelegram } from "../../lib/notifications/telegram.js";
 import {
   generatePersonalizedEmail,
   generateToneVariants,
@@ -215,6 +216,9 @@ export async function sendOutreach(outreachId: string): Promise<{ sent: boolean;
       },
     });
 
+    // Send Telegram notification
+    await notifyTelegram("sent", outreach.lead.businessName, outreach.lead.email);
+
     return { sent: true };
   } catch (err) {
     await prisma.outreach.update({
@@ -223,6 +227,10 @@ export async function sendOutreach(outreachId: string): Promise<{ sent: boolean;
     });
 
     const reason = err instanceof Error ? err.message : "Unknown error";
+    
+    // Send Telegram notification for failure
+    await notifyTelegram("failed", outreach.lead.businessName, outreach.lead.email, { error: reason });
+    
     return { sent: false, reason };
   }
 }
@@ -266,6 +274,18 @@ export async function trackOutreachEvent(
     where: { id: outreachId },
     data: updates,
   });
+
+  // Send Telegram notification
+  const businessName = outreach.lead?.businessName || "Unknown";
+  const email = outreach.lead?.email || "No email";
+
+  if (event === "open") {
+    await notifyTelegram("opened", businessName, email);
+  } else if (event === "reply") {
+    await notifyTelegram("replied", businessName, email);
+  } else if (event === "bounce") {
+    await notifyTelegram("bounced", businessName, email);
+  }
 
   // Update lead status based on outreach event
   if (event === "reply") {

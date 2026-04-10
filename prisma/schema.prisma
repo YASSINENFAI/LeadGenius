@@ -107,14 +107,18 @@ model Outreach {
   subject             String
   body                String
   personalizedDetails Json
+  scheduledAt         DateTime?      // وقت الإرسال المجدول
   sentAt              DateTime?
   openedAt            DateTime?
   repliedAt           DateTime?
+  followUpSent        DateTime?
+  followUpCount       Int            @default(0)
   createdAt           DateTime       @default(now())
   updatedAt           DateTime       @updatedAt
 
   @@index([leadId])
   @@index([status])
+  @@index([scheduledAt])
 }
 
 model PipelineStage {
@@ -258,4 +262,18 @@ model EmailSetting {
   id              String   @id @default("default")
   defaultProvider String?
   updatedAt       DateTime @updatedAt
+}
+
+model TelegramSetting {
+  id          String   @id @default("default")
+  botToken    String
+  chatId      String
+  isEnabled   Boolean  @default(true)
+  notifySent  Boolean  @default(true)
+  notifyOpen  Boolean  @default(true)
+  notifyReply Boolean  @default(true)
+  notifyBounce Boolean @default(true)
+  notifyFail  Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 }

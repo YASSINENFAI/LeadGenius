@@ -1,8 +1,27 @@
 {
-  "name": "findx",
-  "version": "0.1.0",
-  "private": true,
-  "description": "Agent-powered business prospecting platform for the Netherlands market",
+  "name": "leadgenius",
+  "version": "1.0.0",
+  "description": "🚀 Free AI-Powered Lead Generation & Email Outreach Tool - Find leads, generate personalized emails, and automate your outreach workflow",
+  "author": "Yassine",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/YASSINENFAI/LeadGenius.git"
+  },
+  "keywords": [
+    "lead-generation",
+    "email-outreach",
+    "ai",
+    "automation",
+    "email-marketing",
+    "sales",
+    "prospecting",
+    "crm"
+  ],
+  "homepage": "https://github.com/YASSINENFAI/LeadGenius#readme",
+  "bugs": {
+    "url": "https://github.com/YASSINENFAI/LeadGenius/issues"
+  },
   "type": "module",
   "scripts": {
     "dev": "tsx watch --require ./src/setup-tmp.cjs src/server.ts",

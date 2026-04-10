@@ -581,7 +581,20 @@ export function registerRoutes(app: FastifyInstance) {
   // Update a draft outreach
   app.patch("/api/outreaches/:id", async (req, reply) => {
     const { id } = req.params as { id: string };
-    const body = req.body as { subject?: string; body?: string; status?: string } | undefined;
+    const body = req.body as { subject?: string; body?: string; status?: string; scheduledAt?: string | null } | undefined;
+
+    // Handle scheduling
+    if (body?.scheduledAt !== undefined) {
+      const scheduledAt = body.scheduledAt ? new Date(body.scheduledAt) : null;
+      if (scheduledAt && isNaN(scheduledAt.getTime())) {
+        return reply.status(400).send({ error: "Invalid scheduledAt date" });
+      }
+      const outreach = await prisma.outreach.update({
+        where: { id },
+        data: { scheduledAt },
+      });
+      return { outreach };
+    }
 
     if (body?.status === "approved") {
       try {
@@ -608,6 +621,42 @@ export function registerRoutes(app: FastifyInstance) {
     }
 
     return reply.status(400).send({ error: "No valid fields to update" });
+  });
+
+  // Schedule outreach for later sending
+  app.post("/api/outreaches/:id/schedule", async (req, reply) => {
+    const { id } = req.params as { id: string };
+    const body = req.body as { scheduledAt: string } | undefined;
+
+    if (!body?.scheduledAt) {
+      return reply.status(400).send({ error: "scheduledAt is required" });
+    }
+
+    const scheduledAt = new Date(body.scheduledAt);
+    if (isNaN(scheduledAt.getTime())) {
+      return reply.status(400).send({ error: "Invalid scheduledAt date" });
+    }
+
+    const outreach = await prisma.outreach.findUnique({ where: { id } });
+    if (!outreach) {
+      return reply.status(404).send({ error: "Outreach not found" });
+    }
+
+    if (outreach.status !== "draft" && outreach.status !== "pending_approval" && outreach.status !== "approved") {
+      return reply.status(400).send({ error: "Can only schedule drafts or approved emails" });
+    }
+
+    // Approve if draft
+    if (outreach.status === "draft" || outreach.status === "pending_approval") {
+      await approveOutreach(id);
+    }
+
+    const updated = await prisma.outreach.update({
+      where: { id },
+      data: { scheduledAt },
+    });
+
+    return { outreach: updated };
   });
 
   // List all outreaches with filters
@@ -711,6 +760,105 @@ export function registerRoutes(app: FastifyInstance) {
     };
     return { stats };
   });
+
+  // Recent activity for dashboard
+  app.get("/api/dashboard/activity", async () => {
+    const activities: Array<{
+      type: string;
+      message: string;
+      time: string;
+      timestamp: Date;
+    }> = [];
+
+    // Get recent outreaches (sent, opened, replied, bounced)
+    const recentOutreaches = await prisma.outreach.findMany({
+      where: {
+        status: { in: ["sent", "opened", "replied", "bounced"] },
+      },
+      include: {
+        lead: {
+          select: { businessName: true },
+        },
+      },
+      orderBy: { updatedAt: "desc" },
+      take: 10,
+    });
+
+    for (const outreach of recentOutreaches) {
+      const businessName = outreach.lead?.businessName || "Unknown";
+      const timeAgo = getTimeAgo(outreach.updatedAt);
+
+      if (outreach.status === "sent") {
+        activities.push({
+          type: "email_sent",
+          message: `Email sent to ${businessName}`,
+          time: timeAgo,
+          timestamp: outreach.updatedAt,
+        });
+      } else if (outreach.status === "opened") {
+        activities.push({
+          type: "email_opened",
+          message: `Email opened by ${businessName}`,
+          time: timeAgo,
+          timestamp: outreach.updatedAt,
+        });
+      } else if (outreach.status === "replied") {
+        activities.push({
+          type: "reply",
+          message: `Reply from ${businessName}`,
+          time: timeAgo,
+          timestamp: outreach.updatedAt,
+        });
+      } else if (outreach.status === "bounced") {
+        activities.push({
+          type: "bounce",
+          message: `Email bounced for ${businessName}`,
+          time: timeAgo,
+          timestamp: outreach.updatedAt,
+        });
+      }
+    }
+
+    // Get recent leads discovered
+    const recentLeads = await prisma.lead.findMany({
+      orderBy: { createdAt: "desc" },
+      take: 5,
+      select: {
+        businessName: true,
+        createdAt: true,
+      },
+    });
+
+    for (const lead of recentLeads) {
+      activities.push({
+        type: "lead",
+        message: `New lead: ${lead.businessName}`,
+        time: getTimeAgo(lead.createdAt),
+        timestamp: lead.createdAt,
+      });
+    }
+
+    // Sort by timestamp
+    activities.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
+
+    // Return top 10
+    return { activities: activities.slice(0, 10) };
+  });
+
+  // Helper function to get time ago
+  function getTimeAgo(date: Date): string {
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+    const diffDays = Math.floor(diffMs / 86400000);
+
+    if (diffMins < 1) return "Just now";
+    if (diffMins < 60) return `${diffMins}m ago`;
+    if (diffHours < 24) return `${diffHours}h ago`;
+    if (diffDays < 7) return `${diffDays}d ago`;
+    return date.toLocaleDateString();
+  }
 
   // Score distribution for dashboard
   app.get("/api/leads/score-distribution", async () => {
@@ -1668,6 +1816,118 @@ export function registerRoutes(app: FastifyInstance) {
     resetProviderCache();
 
     return reply.send({ defaultProvider: parsed.data.defaultProvider });
+  });
+
+  // ============================================================
+  // Telegram Settings
+  // ============================================================
+
+  // GET /api/telegram/settings
+  app.get("/api/telegram/settings", async (_req, reply) => {
+    const settings = await prisma.telegramSetting.findUnique({ where: { id: "default" } });
+
+    return reply.send({
+      configured: !!settings?.botToken && !!settings?.chatId,
+      isEnabled: settings?.isEnabled ?? false,
+      chatId: settings?.chatId ? `${settings.chatId.substring(0, 5)}****` : null, // Mask for security
+      notifySent: settings?.notifySent ?? true,
+      notifyOpen: settings?.notifyOpen ?? true,
+      notifyReply: settings?.notifyReply ?? true,
+      notifyBounce: settings?.notifyBounce ?? true,
+      notifyFail: settings?.notifyFail ?? true,
+    });
+  });
+
+  // POST /api/telegram/settings - Save Telegram settings
+  app.post("/api/telegram/settings", async (req, reply) => {
+    const schema = z.object({
+      botToken: z.string().min(1),
+      chatId: z.string().min(1),
+      isEnabled: z.boolean().optional(),
+      notifySent: z.boolean().optional(),
+      notifyOpen: z.boolean().optional(),
+      notifyReply: z.boolean().optional(),
+      notifyBounce: z.boolean().optional(),
+      notifyFail: z.boolean().optional(),
+    });
+
+    const parsed = schema.safeParse(req.body);
+    if (!parsed.success) {
+      return reply.status(400).send({ error: "Invalid Telegram settings" });
+    }
+
+    // Test the bot token and chat ID
+    try {
+      const testUrl = `https://api.telegram.org/bot${parsed.data.botToken}/getMe`;
+      const testRes = await fetch(testUrl);
+      const testResult = await testRes.json() as { ok?: boolean };
+      
+      if (!testResult.ok) {
+        return reply.status(400).send({ error: "Invalid bot token" });
+      }
+    } catch (err) {
+      return reply.status(400).send({ error: "Failed to verify bot token" });
+    }
+
+    const settings = await prisma.telegramSetting.upsert({
+      where: { id: "default" },
+      update: {
+        botToken: parsed.data.botToken,
+        chatId: parsed.data.chatId,
+        isEnabled: parsed.data.isEnabled ?? true,
+        notifySent: parsed.data.notifySent ?? true,
+        notifyOpen: parsed.data.notifyOpen ?? true,
+        notifyReply: parsed.data.notifyReply ?? true,
+        notifyBounce: parsed.data.notifyBounce ?? true,
+        notifyFail: parsed.data.notifyFail ?? true,
+      },
+      create: {
+        id: "default",
+        botToken: parsed.data.botToken,
+        chatId: parsed.data.chatId,
+        isEnabled: parsed.data.isEnabled ?? true,
+        notifySent: parsed.data.notifySent ?? true,
+        notifyOpen: parsed.data.notifyOpen ?? true,
+        notifyReply: parsed.data.notifyReply ?? true,
+        notifyBounce: parsed.data.notifyBounce ?? true,
+        notifyFail: parsed.data.notifyFail ?? true,
+      },
+    });
+
+    return reply.send({
+      success: true,
+      isEnabled: settings.isEnabled,
+    });
+  });
+
+  // POST /api/telegram/test - Send test notification
+  app.post("/api/telegram/test", async (req, reply) => {
+    const settings = await prisma.telegramSetting.findUnique({ where: { id: "default" } });
+
+    if (!settings?.botToken || !settings?.chatId) {
+      return reply.status(400).send({ error: "Telegram not configured" });
+    }
+
+    try {
+      const url = `https://api.telegram.org/bot${settings.botToken}/sendMessage`;
+      const res = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          chat_id: settings.chatId,
+          text: "✅ Test notification from FindX! Your Telegram integration is working correctly.",
+        }),
+      });
+
+      const result = await res.json() as { ok?: boolean; description?: string };
+      if (!result.ok) {
+        return reply.status(400).send({ error: result.description || "Failed to send test message" });
+      }
+
+      return reply.send({ success: true });
+    } catch (err) {
+      return reply.status(400).send({ error: "Failed to send test message" });
+    }
   });
 
   // ============================================================

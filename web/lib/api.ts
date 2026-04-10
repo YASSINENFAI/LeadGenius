@@ -140,6 +140,16 @@ export function sendOutreach(
   });
 }
 
+export function scheduleOutreach(
+  outreachId: string,
+  scheduledAt: string,
+): Promise<{ outreach: Outreach }> {
+  return fetchApi(`/outreaches/${outreachId}/schedule`, {
+    method: "POST",
+    body: JSON.stringify({ scheduledAt }),
+  });
+}
+
 export function updateOutreach(
   outreachId: string,
   data: { subject?: string; body?: string; status?: string },
@@ -152,6 +162,47 @@ export function updateOutreach(
 
 export function getOutreaches(leadId: string): Promise<{ outreaches: Outreach[] }> {
   return fetchApi(`/leads/${leadId}/outreaches`);
+}
+
+// --- Telegram Settings ---
+
+export interface TelegramSettingsResponse {
+  configured: boolean;
+  isEnabled: boolean;
+  chatId: string | null;
+  notifySent: boolean;
+  notifyOpen: boolean;
+  notifyReply: boolean;
+  notifyBounce: boolean;
+  notifyFail: boolean;
+}
+
+export function getTelegramSettings(): Promise<TelegramSettingsResponse> {
+  return fetchApi("/telegram/settings");
+}
+
+export function saveTelegramSettings(data: {
+  botToken: string;
+  chatId: string;
+  isEnabled?: boolean;
+  notifySent?: boolean;
+  notifyOpen?: boolean;
+  notifyReply?: boolean;
+  notifyBounce?: boolean;
+  notifyFail?: boolean;
+}): Promise<{ success: boolean; isEnabled: boolean }> {
+  return fetchApi("/telegram/settings", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
+export function testTelegramSettings(): Promise<{ success: boolean }> {
+  return fetchApi("/telegram/test", { method: "POST" });
+}
+
+export function disconnectTelegram(): Promise<{ success: boolean }> {
+  return fetchApi("/telegram/settings", { method: "DELETE" });
 }
 
 // --- Agent Pipeline ---

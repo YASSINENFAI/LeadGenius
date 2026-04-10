@@ -30,6 +30,25 @@
   --accent-error: #ef4444;     /* red-500 */
 }
 
+/* Base styles for better readability */
+body {
+  font-size: 15px;
+  line-height: 1.6;
+}
+
+/* Larger text for labels and descriptions */
+.text-xs {
+  font-size: 0.8rem;
+  line-height: 1.5;
+}
+
+/* Better button sizing */
+button {
+  min-height: 32px;
+  padding-top: 6px;
+  padding-bottom: 6px;
+}
+
 html {
   color-scheme: dark;
   background-color: var(--bg-primary);

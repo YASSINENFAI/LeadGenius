@@ -35,6 +35,16 @@ async function main() {
     // Start agent pipeline worker
     startAgentWorker();
     console.log("Agent pipeline worker started");
+
+    // Start email scheduler
+    const { startScheduler } = await import("./workers/scheduler.js");
+    startScheduler();
+    console.log("Email scheduler started");
+
+    // Start follow-up worker
+    const { startFollowUpWorker } = await import("./workers/followup.js");
+    startFollowUpWorker();
+    console.log("Follow-up worker started");
   } catch (err) {
     app.log.error(err);
     process.exit(1);
