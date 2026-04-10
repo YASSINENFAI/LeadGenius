@@ -16,7 +16,17 @@
     "email-marketing",
     "sales",
     "prospecting",
-    "crm"
+    "crm",
+    "openai",
+    "claude",
+    "glm",
+    "email-automation",
+    "lead-scoring",
+    "marketing-automation",
+    "sales-tool",
+    "telegram-bot",
+    "free",
+    "open-source"
   ],
   "homepage": "https://github.com/YASSINENFAI/LeadGenius#readme",
   "bugs": {
