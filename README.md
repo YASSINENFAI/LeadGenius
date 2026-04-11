@@ -331,6 +331,8 @@ If you find this project helpful, please consider:
 **Created by Yassine**
 
 - GitHub: [@YASSINENFAI](https://github.com/YASSINENFAI)
+- Email: [azffhk@gmail.com](mailto:azffhk@gmail.com)
+- Telegram: [@FGMANO](https://t.me/FGMANO)
 
 ---
 

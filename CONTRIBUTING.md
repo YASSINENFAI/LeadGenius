@@ -75,3 +75,9 @@ npm run typecheck   # Type check
 ## 🙏 Thank You!
 
 Every contribution helps make LeadGenius better!
+
+## 📞 Contact
+
+- Email: [azffhk@gmail.com](mailto:azffhk@gmail.com)
+- Telegram: [@FGMANO](https://t.me/FGMANO)
+- GitHub: [@YASSINENFAI](https://github.com/YASSINENFAI)
